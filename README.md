@@ -1,139 +1,103 @@
 # KubeShop
 
-Loja demonstrativa extraída do projeto minikube-lab para executar em uma VM com Docker Compose.
+O KubeShop é um projeto didático para o Laboratório de Engenharia de Software do professor Laercio. O objetivo é praticar o deploy de uma aplicação em nuvem, desde a preparação do ambiente até a publicação e a verificação dos serviços.
 
-Três serviços: frontend React compilado e servido por Nginx, API Node.js/Express e MongoDB autenticado com armazenamento persistente. Catálogo, carrinho e criação/consulta de pedidos foram preservados. Os pedidos são fictícios e compartilhados; não há login de clientes nem pagamentos reais.
+A aplicação simula uma loja virtual com catálogo, carrinho e histórico de pedidos. Ela reúne uma interface em React servida pelo Nginx, uma API em Node.js/Express e um banco MongoDB com armazenamento persistente. Essa estrutura permite trabalhar com containers, comunicação entre serviços, configuração do ambiente e persistência de dados durante as atividades do laboratório.
 
-## Requisitos
+Os produtos e pedidos são fictícios e o histórico é compartilhado entre os usuários da loja. Não há login de clientes nem pagamentos reais.
 
-- Docker Engine com contêineres Linux e Docker Compose v2.20 ou superior.
-- Git para clonar e atualizar.
-- Acesso aos registries Docker e npm na primeira construção.
-- Porta TCP 8080 disponível, ou outra configurada em HTTP_PORT.
+## Como rodar localmente
 
-Node.js não precisa estar instalado na VM. O preparo e o build usam imagens Docker.
+### 1. Prepare o ambiente
 
-## Instalação em Linux
+- Instale o [Git](https://git-scm.com/).
+- Instale e inicie o Docker, com suporte a containers Linux e Docker Compose v2.20 ou superior. No Windows, use o [Docker Desktop](https://www.docker.com/products/docker-desktop/) com o mecanismo de containers Linux.
+- Deixe a porta `8080` disponível. A primeira execução precisa de internet para baixar as imagens e dependências.
+
+Não é necessário instalar Node.js ou MongoDB no computador: o preparo e a execução usam Docker.
+
+### 2. Clone o repositório
 
 ```sh
 git clone https://github.com/LaercioMLB/kube-shop-v2.git
 cd kube-shop-v2
-sh scripts/setup.sh
-docker compose up -d --build --wait --wait-timeout 240
 ```
 
-Abra **http://IP-DA-VM:8080**. Libere a porta configurada no firewall da VM, se necessário.
+Execute os próximos comandos dentro dessa pasta.
 
-## Instalação no Windows
+### 3. Gere a configuração e as credenciais
 
-Use Docker Desktop com o mecanismo de contêineres Linux. No PowerShell:
+No **Windows**, pelo PowerShell:
 
 ```powershell
-git clone https://github.com/LaercioMLB/kube-shop-v2.git
-cd kube-shop-v2
 powershell -NoProfile -ExecutionPolicy Bypass -File .\scripts\setup.ps1
+```
+
+No **Linux**:
+
+```sh
+sh scripts/setup.sh
+```
+
+O script cria o arquivo `.env` e gera as senhas do banco na pasta `.secrets/`. Se esses arquivos já existirem, serão preservados.
+
+### 4. Configure o acesso local
+
+Abra o arquivo `.env` e ajuste estas variáveis:
+
+```dotenv
+BIND_ADDRESS=127.0.0.1
+HTTP_PORT=8080
+```
+
+Assim, a loja fica acessível apenas pelo seu computador. Se a porta `8080` estiver ocupada, escolha outra em `HTTP_PORT` e use essa porta no endereço de acesso.
+
+### 5. Suba os serviços
+
+```sh
 docker compose up -d --build --wait --wait-timeout 240
 ```
 
-Abra **http://localhost:8080**.
+O comando constrói as imagens e inicia o frontend, a API e o MongoDB. Aguarde os três serviços ficarem saudáveis (`healthy`).
 
-## Configuração
+### 6. Abra a loja
 
-Os scripts setup geram senhas aleatórias em .secrets/ e criam .env a partir de .env.example. Executá-los novamente preserva os arquivos existentes. A API recebe apenas a senha do usuário readWrite do banco kubeshop; a senha administrativa fica somente no MongoDB.
+Acesse **[http://localhost:8080](http://localhost:8080)** no navegador.
 
-| Variável em .env | Padrão | Finalidade |
-|---|---|---|
-| BIND_ADDRESS | 0.0.0.0 | Interfaces da VM que recebem conexões |
-| HTTP_PORT | 8080 | Porta HTTP publicada |
-| APP_VERSION | 1.0.0 | Versão das imagens e da API |
+Explore o catálogo, adicione um produto à sacola e confirme um pedido fictício. Depois, consulte o resultado em **Meus pedidos**.
 
-Para acesso apenas local, use BIND_ADDRESS=127.0.0.1. Depois de alterar .env, execute novamente docker compose up -d --build --wait.
+### 7. Verifique o funcionamento
 
-Somente o frontend publica uma porta no host. API e banco se comunicam em redes Docker; o banco usa uma rede interna. A entrada padrão é HTTP. Se o ambiente exigir HTTPS, use o proxy TLS já adotado na infraestrutura apontando para a porta da loja.
-
-As credenciais do MongoDB são inicializadas quando o volume está vazio. Preserve .secrets/ junto com os volumes: substituir os arquivos de senha não altera usuários de um banco já inicializado. .env, .secrets/ e dados de execução ficam fora do Git e do contexto de build.
-
-## Verificação
+Confira o estado dos serviços:
 
 ```sh
 docker compose ps
+```
+
+Execute o teste funcional:
+
+```sh
 docker compose exec -T api node /app/scripts/smoke.mjs
 ```
 
-O smoke test acessa o frontend pelo Nginx, verifica a API e cria/consulta um pedido fictício. Não gera carga.
+O teste verifica a página inicial, a API, o catálogo e a criação e consulta de um pedido fictício. O resultado esperado é `"result":"PASS"`.
 
-## Operação
+## Consultar logs e encerrar
+
+Para acompanhar os logs:
 
 ```sh
-# Logs com rotação configurada por serviço
 docker compose logs --tail=100 -f
+```
 
-# Parar os serviços
-docker compose stop
+Use `Ctrl+C` para sair da visualização dos logs. Os serviços continuam em execução.
 
-# Iniciar novamente
-docker compose up -d --wait
+Para desligar o projeto:
 
-# Atualizar código e reconstruir
-git pull --ff-only
-docker compose up -d --build --wait --wait-timeout 240
-
-# Remover contêineres e redes, preservando volumes
+```sh
 docker compose down
 ```
 
-Os volumes mongo-data e mongo-config mantêm os dados entre recriações dos contêineres. O comando down com a opção --volumes remove esses dados. A instalação tem uma única instância de cada serviço; atualizações e falhas da VM podem interromper o acesso.
+Esse comando remove os containers e as redes do projeto, preservando os volumes com os pedidos. Mantenha também a pasta `.secrets/`, pois ela contém as credenciais do banco. A opção `--volumes` remove os dados persistidos.
 
-O Docker reinicia processos encerrados conforme restart: unless-stopped. Healthchecks indicam prontidão e controlam a ordem inicial; um estado unhealthy não provoca reinício automático por si só.
-
-## Desenvolvimento e testes
-
-Para trabalhar no código fora dos contêineres, use Node.js 24.15+ da linha 24 e npm:
-
-```sh
-npm ci
-npm test
-npm run build
-```
-
-Os testes de navegador usam Google Chrome instalado e a loja em execução:
-
-```sh
-npm run test:e2e
-```
-
-E2E_BASE_URL permite apontar para outra porta, por exemplo http://127.0.0.1:18080. Os testes criam pedidos fictícios.
-
-## Estrutura
-
-```text
-apps/frontend/       interface, testes, Nginx e Dockerfile
-apps/backend/        API, catálogo, persistência, testes e Dockerfile
-docker/mongodb/      criação do usuário da aplicação e healthcheck
-scripts/setup.*      preparo de configuração e credenciais
-scripts/smoke.mjs    verificação funcional pelo proxy
-tests/browser/       testes desktop e celular
-compose.yaml         serviços, redes, volumes e secrets
-```
-
-O build dos Dockerfiles usa a raiz do repositório como contexto, pois as aplicações são workspaces npm e compartilham package-lock.json. As versões JavaScript diretas e as imagens base mantêm a referência da extração. A dependência transitiva body-parser foi atualizada para 2.4.0 para corrigir o aviso identificado durante a validação.
-
-## API
-
-| Método | Rota | Uso |
-|---|---|---|
-| GET | /api/products | Catálogo fixo |
-| POST | /api/orders | Criar pedido fictício |
-| GET | /api/orders | Consultar os 100 pedidos mais recentes |
-| GET | /api/info | Versão e horário |
-| GET | /api/health/live | Processo ativo |
-| GET | /api/health/startup | Inicialização concluída |
-| GET | /api/health/ready | API pronta e banco acessível |
-
-O servidor valida os produtos e quantidades e calcula os preços em centavos. O carrinho permanece na memória do navegador até a confirmação. Não há chave de idempotência para POST de pedidos.
-
-## Origem e escopo
-
-Origem: [LaercioMLB/minikube-lab](https://github.com/LaercioMLB/minikube-lab), diretório kubeshop-lab/.
-
-A instalação extraída não inclui Kubernetes, Helm, Minikube, monitoramento, geradores de carga, simulações de falha ou tarefas do laboratório. Não houve migração de pedidos existentes. Veja [VALIDATION.md](VALIDATION.md) para as verificações executadas nesta extração.
+Para iniciar novamente, execute o comando do passo 5.
