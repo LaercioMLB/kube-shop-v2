@@ -1,0 +1,54 @@
+name: kube-shop-db
+
+services:
+  mongodb:
+    image: mongo:8.0.17
+    command: [--bind_ip_all, --wiredTigerCacheSizeGB, "0.25"]
+
+    ports:
+      - "${DB_BIND_ADDRESS:?Informe o IP privado da VM do banco}:27017:27017"
+
+    environment:
+      MONGO_INITDB_ROOT_USERNAME: admin
+      MONGO_INITDB_ROOT_PASSWORD_FILE: /run/secrets/mongo_root_password
+      MONGO_INITDB_DATABASE: kubeshop
+      MONGO_APP_USERNAME: kubeshop
+      MONGO_APP_PASSWORD_FILE: /run/secrets/mongo_app_password
+
+    secrets:
+      - mongo_root_password
+      - mongo_app_password
+
+    volumes:
+      - type: bind
+        source: ${MONGO_DATA_DIR:?Configure o diretorio de dados}
+        target: /data/db
+        bind:
+          create_host_path: false
+
+      - type: bind
+        source: ${MONGO_CONFIG_DIR:?Configure o diretorio de configuracao}
+        target: /data/configdb
+        bind:
+          create_host_path: false
+
+      - ./docker/mongodb/init.js:/docker-entrypoint-initdb.d/10-app-user.js:ro
+      - ./docker/mongodb/healthcheck.js:/opt/healthcheck.js:ro
+
+    restart: unless-stopped
+    security_opt: [no-new-privileges:true]
+    stop_grace_period: 30s
+
+    healthcheck:
+      test: [CMD, mongosh, --quiet, --file, /opt/healthcheck.js]
+      interval: 10s
+      timeout: 5s
+      retries: 12
+      start_period: 30s
+
+secrets:
+  mongo_root_password:
+    file: ./.secrets/mongo-root-password
+
+  mongo_app_password:
+    file: ./.secrets/mongo-app-password
