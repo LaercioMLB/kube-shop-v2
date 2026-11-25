@@ -1,0 +1,9 @@
+---
+all:
+  children:
+    application:
+      hosts:
+        app-vm: {}
+    database:
+      hosts:
+        database-vm: {}

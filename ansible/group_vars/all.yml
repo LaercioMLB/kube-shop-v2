@@ -1,0 +1,9 @@
+---
+# Ambiente de implantacao do KubeShop
+kubeshop_environment: dev
+
+# Atualizar o sistema operacional?
+update_os: false
+
+# Pacotes adicionais solicitados na pipeline
+extra_packages: []

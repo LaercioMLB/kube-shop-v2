@@ -1,0 +1,9 @@
+---
+- name: Preparar servidores KubeShop
+  hosts: all
+  become: true
+  gather_facts: true
+
+  roles:
+    - os_updates
+    - docker
