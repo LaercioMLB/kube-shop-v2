@@ -1,0 +1,15 @@
+---
+- name: Atualizar indice de pacotes APT
+  ansible.builtin.apt:
+    update_cache: true
+    cache_valid_time: 3600
+
+- name: Atualizar sistema operacional quando solicitado
+  ansible.builtin.apt:
+    upgrade: dist
+  when: update_os | bool
+
+- name: Instalar pacotes basicos e adicionais
+  ansible.builtin.apt:
+    name: "{{ ['curl', 'git', 'unzip', 'ca-certificates'] + extra_packages }}"
+    state: present

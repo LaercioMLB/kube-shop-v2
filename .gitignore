@@ -21,3 +21,6 @@ crash.*.log
 
 # Credenciais
 *.pem
+
+# Inventario real das maquinas
+ansible/inventory/hosts.yml
